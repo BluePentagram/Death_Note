@@ -54,17 +54,21 @@ if !ConVarExists( "DeathNote_TTT_DNLockOut") then
 end
 
 local version = "0.2.0"
-http.Fetch("https://raw.githubusercontent.com/BluePentagram/Death_Note/master/version.txt", function( body, len, headers, code)
-	if GetConVar("DeathNote_Update_Messege"):GetBool() then
-	local githubversion = body
-		if githubversion != version then 
-			if SERVER then
-				print("Deathnote: Your DeathNote version is different, Server Vesion: "..version..", Github Vesion: "..githubversion)
-			elseif CLIENT then
-				chat.AddText( Color( 25, 25, 25 ), "Deathnote: ", color_white, "Server DeathNote version is different, Server Vesion: "..version..", Github Vesion: "..githubversion )
+-- checking version in the first tick to ensure http library is loaded (https://github.com/Facepunch/garrysmod-issues/issues/1010)
+hook.Add("Think", "DeathNote_CheckVersion", function()
+	http.Fetch("https://raw.githubusercontent.com/BluePentagram/Death_Note/master/version.txt", function( body, len, headers, code)
+		if GetConVar("DeathNote_Update_Messege"):GetBool() then
+		local githubversion = body
+			if githubversion != version then 
+				if SERVER then
+					print("Deathnote: Your DeathNote version is different, Server Vesion: "..version..", Github Vesion: "..githubversion)
+				elseif CLIENT then
+					chat.AddText( Color( 25, 25, 25 ), "Deathnote: ", color_white, "Server DeathNote version is different, Server Vesion: "..version..", Github Vesion: "..githubversion )
+				end
 			end
 		end
-	end
+	end)
+	hook.Remove("Think", "DeathNote_CheckVersion")
 end)
 
 DeathnoteCustomDeathCode = [[
