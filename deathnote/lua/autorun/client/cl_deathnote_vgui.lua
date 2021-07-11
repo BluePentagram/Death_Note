@@ -133,10 +133,12 @@ function deathnote_gui_ttt(DeathTypes,dn_type)
 	if GetRoundState() == ROUND_ACTIVE then
 		for k,v in pairs(player.GetAll()) do
 			Name = ""
-			if v:GetRole() == 0 then Name = "I - "..v:Nick() end
-			if v:GetRole() == 1 then Name = "T - "..v:Nick() end
-			if v:GetRole() == 2 then Name = "D - "..v:Nick() end	
-			if table.HasValue({0,2}, v:GetRole()) and v:Alive() or !v:Team() == TEAM_SPEC then
+			if v:GetRole() == 0 then Name = "I - "..v:Nick()
+			elseif v:GetRole() == 1 then Name = "T - "..v:Nick()
+			elseif v:GetRole() == 2 then Name = "D - "..v:Nick()
+			else Name = v:Nick() end
+			local teammate = TTT2 and v:GetTeam() == LocalPlayer():GetTeam() or v:GetRole() == LocalPlayer():GetRole()
+			if !teammate and v:Alive() and v:Team() != TEAM_SPEC then
 				DeathNotePlayerList:AddLine(Name,v:EntIndex()) -- Add lines
 			end
 		end
