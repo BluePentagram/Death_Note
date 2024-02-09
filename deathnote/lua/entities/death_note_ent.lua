@@ -16,14 +16,12 @@ if SERVER then
 	function ENT:AcceptInput(ply, caller)
 		if caller:IsPlayer() && !caller.CantUse then
 			caller.CantUse = true
-			caller.MenuOpen = true
-			caller.CanUse = true
+			caller.CanUseDeathNoteEnt = true
 			timer.Simple(3, function()  caller.CantUse = false end)
 	
 			if caller:IsValid() then
 				net.Start( "deathnote_gui" )
-					net.WriteTable(deathtypes)
-					net.WriteString("ent")
+					net.WriteTable(DN_DeathTypes)
 				net.Send( caller ) 
 			end
 		end
@@ -42,7 +40,7 @@ end
 ENT.Type 			= "anim"
 ENT.Base 			= "base_gmodentity"
 
-ENT.PrintName 		= "Death-Note"
+ENT.PrintName 		= "Death Note"
 ENT.Author 			= "Blue-Pentagram And TheRowan"
 ENT.Spawnable 		= true
 ENT.AdminOnly		= true

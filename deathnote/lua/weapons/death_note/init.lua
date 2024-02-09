@@ -9,98 +9,57 @@ include( 'autorun/server/sv_deathnote.lua' )
 SWEP.Weight = 5
 SWEP.AutoSwitchTo = true
 SWEP.AutoSwitchFrom = true
-SWEP.deathtype = 1
-local TheDeathType = "heartattack"
-FallInUse = false
-ExplodeInUse = false
-BurialInUse = false
+-- SWEP.DN_DeathType = 1
+SWEP.DN_DeathType = table.KeyFromValue( DN_DeathTypes, "heartattack" )
 
-if CLIENT then
-else
+
+
+if SERVER then
 	function SWEP:GetRepeating()
 		local ply = self.Owner
 		return IsValid(ply)
 	end
 end
 
--- if ( SERVER ) then
-
--- end
-
 function SWEP:Reload()
-	if GetConVar("DeathNote_Debug"):GetBool() then
-		for k,v in pairs(player.GetAll()) do
-			if GetConVar("DeathNote_ulx_installed"):GetBool() then
-				if table.HasValue(ulx_premissions, v:GetNWString("usergroup")) then
-					for a,b in pairs(player.GetAll()) do
-						b.DeathNoteUse = false
-					end
-					self.Owner:PrintMessage(HUD_PRINTTALK,"DeathNote: You Reset Everyone's the DeathNote")
-				end
-			else
-				if v:IsAdmin() then
-					for a,b in pairs(player.GetAll()) do
-						b.DeathNoteUse = false
-					end
-					self.Owner:PrintMessage(HUD_PRINTTALK,"DeathNote: You Reset Everyone's the DeathNote")
-				end
-			end
-		end
-	end
+	local ply = self.Owner
+	dn_reset_debug(ply)
 end
 
 function SWEP:PrimaryAttack()
 
 	local ply = self.Owner
+	local eyetrace = ply:GetEyeTrace().Entity
 	
-	-- if !IsFirstTimePredicted() then return end
-	if self.Owner:KeyDown(IN_USE) then
-		self.deathtype = self.deathtype + 1
-		if self.deathtype > #deathtypes then
-			self.deathtype = 1
+	if ply:KeyDown(IN_USE) then
+		self.DN_DeathType = self.DN_DeathType + 1
+		if self.DN_DeathType > #DN_DeathTypes then
+			self.DN_DeathType = 1
 		end
-		self.Owner:PrintMessage(HUD_PRINTTALK,"DeathNote: "..deathtypes[self.deathtype])
+		ply:PrintMessage(HUD_PRINTTALK,"Death Note: Selection "..DN_DeathTypes[self.DN_DeathType])
 	else	
-		if IsValid(self.Owner:GetEyeTrace().Entity) then
-			if self.Owner:GetEyeTrace().Entity:IsPlayer() then
-				local trKill = player.GetByID(self.Owner:GetEyeTrace().Entity:EntIndex())
-				DeathNote_Primary(ply,trKill,deathtypes[self.deathtype])
+		if !ply.DeathNoteUse then
+			if IsValid(eyetrace) then
+				if (eyetrace:IsPlayer() or eyetrace:IsNPC() or eyetrace:IsNextBot()) then
+					local entity_target = eyetrace:GetName()
+					if !eyetrace:IsPlayer() then 
+						entity_target = eyetrace:GetClass() 
+					end
+					ply:PrintMessage(HUD_PRINTTALK,"Death Note: You have selected, "..entity_target..", With "..DN_DeathTypes[self.DN_DeathType]) -- Nick no work with NPC's
+					local trKill = player.GetByID(eyetrace:EntIndex()) 
+					DeathNote_Function(ply,eyetrace,DN_DeathTypes[self.DN_DeathType])
+				end
 			end
+		else
+			ply:PrintMessage(HUD_PRINTTALK,"Death Note: Is on cooldown.")
 		end
-		if self.Owner:GetEyeTrace().Entity:IsNPC() then
-			self.Owner:GetEyeTrace().Entity:Fire("sethealth", "0", 0)
-		end	
-	end
-end
-	
-function SWEP:SecondaryAttack()
-	if ( SERVER ) then
-		net.Start( "deathnote_gui" )
-			net.WriteTable(deathtypes)
-		net.Send( self.Owner ) 
 	end
 end
 
-function DeathNote_Primary(ply,TarPly,TheDeathType) -- this is here just for my simple sake (Bitch Code)
-	if !ply.DeathNoteUse then
-		ply:PrintMessage(HUD_PRINTTALK,"DeathNote: You have selected, "..TarPly:Nick()..", With "..TheDeathType)
-		if TarPly:Alive() then
-			ply.DeathNoteUse = true
-			timer.Simple( GetConVar("DeathNote_DeathTime"):GetInt(), function()
-				if TarPly:Alive() then
-					hook.Run( "dn_module_"..TheDeathType, ply,TarPly,false ) 
-					ply.DeathNoteUse = false
-					AdminMessege(ply,TarPly,TheDeathType)
-				else
-					ply:PrintMessage(HUD_PRINTTALK,"DeathNote: That Person Is Already Dead")
-					ply.DeathNoteUse = false
-					FailAdminMessege(ply,TarPly)
-				end
-			end)
-		else
-			ply:PrintMessage(HUD_PRINTTALK,"That Person Is Already Dead")
-		end
-	else
-		ply:PrintMessage(HUD_PRINTTALK,"The deathnote is in cooldown.")
+function SWEP:SecondaryAttack()
+	if ( SERVER ) then
+		net.Start( "deathnote_gui" )
+			net.WriteTable(DN_DeathTypes)
+		net.Send( self.Owner ) 
 	end
 end

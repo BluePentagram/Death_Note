@@ -1,10 +1,9 @@
---Weapon cl_init
+-- TTT Weapon cli_init
 
 include('shared.lua')
 
 SWEP.PrintName = "Death Note"
-SWEP.Slot = 5
-SWEP.SlotPos = 20
+SWEP.Slot = 8
 SWEP.DrawAmmo = false
 SWEP.DrawCrosshair = false
 

@@ -532,7 +532,7 @@ SWEP.WElements = {
 
 
 
-SWEP.PrintName = "Death-Note"
+SWEP.PrintName = "Death Note"
 SWEP.DrawAmmo = false
 SWEP.DrawCrosshair = true
 

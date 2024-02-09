@@ -24,7 +24,6 @@ AddCSLuaFile( "init.lua" )
 function SWEP:Initialize()
 
 	// other initialize code goes here
-
 	self:SetWeaponHoldType( self.HoldType )
 
 	
@@ -525,7 +524,7 @@ SWEP.WElements = {
 -------------------------------------------
 
 
-SWEP.PrintName = "Death-Note - WIP Module version"
+SWEP.PrintName = "Death Note"
 SWEP.DrawAmmo = false
 SWEP.DrawCrosshair = true
 
