@@ -4,24 +4,98 @@ function deathnote_sandbox_names(DeathNotePlayerList) -- Sandbox version of addi
 	for k,v in pairs(player.GetAll()) do -- Let's first grab all the players
 		DeathNotePlayerList:AddLine(v:Name(),v:EntIndex()) -- Add lines for player's
 	end -- and end it to start the one for npc's doing it this why makes sure the players are on the top of the list
-	if  GetConVar("DeathNote_GUI_ShowNPCs"):GetBool() then
-		for k,v in pairs(ents.GetAll()) do -- let's grab every entity
-			if ( v:IsNPC() or v:IsNextBot() ) then -- See if entity is a a NPC or NextBot
-				npc_type = "[NPC] " -- Pre type NPC for them
-				npc_name = v:GetClass() -- Get there Class/name what the called at the base level (so many npc_civilians with mods)
-				if string.StartsWith(v:GetClass(), "npc_") then -- If they have npc_
-					npc_name = string.TrimLeft(v:GetClass(), "npc_") -- let's remove it
-					if v:IsNextBot() then -- a check to change NPC to Nextbot if they are a nextbot
-						npc_type = "[NextBot] " -- and change the [NPC] to [NextBot]
-					end
+	if GetConVar("DeathNote_GUI_ShowNPCs"):GetBool() then
+		if GetConVar("DeathNote_GUI_FastNPCsNames"):GetBool() then -- Getting there class as a name only removing and adding a fance npc titles and useing class instead most modded npcs are citizens though
+			for k,v in pairs(ents.GetAll()) do -- let's grab every entity
+				if ( v:IsNPC() or v:IsNextBot() ) then -- See if entity is a a NPC or NextBot
+					local npc_type = deathnote_npc_type_fix(v)
+					local npc_name = deathnote_npc_classname(v)
 					npc_name = npc_type..npc_name -- Add the fancy type and stiped name again
+					DeathNotePlayerList:AddLine(npc_name,v:EntIndex()) -- Then add lines for NPC's/NextBots
 				end
-				DeathNotePlayerList:AddLine(npc_name,v:EntIndex()) -- Then add lines for NPC's/NextBots
+			end
+		else -- Now let's if the player wants to get there nice fancy name
+			deathnote_npc_nicenamecache() -- Let's create the tables for the bad habbit table checking.
+			for k,v in pairs(ents.GetAll()) do -- let's grab every entity
+				if ( v:IsNPC() or v:IsNextBot() ) then -- See if entity is a a NPC or NextBot
+					local npc_name = "???" -- Lets set the tempory name to nothing
+					local npc_type = deathnote_npc_type_fix(v)
+					if table.HasValue( DN_NPCListCacheModel, v:GetModel() ) then -- Now let's check the cached model table for the npcs model
+						npc_name = DN_NPCListCacheModelName[table.KeyFromValue( DN_NPCListCacheModel, v:GetModel() )] -- now lets grab the name from the key of the cached model
+					elseif table.HasValue( DN_NPCListCacheClass, v:GetClass() ) then -- if they have no name let's check the the entity class with the class cached table
+						npc_name = DN_NPCListCacheClassName[table.KeyFromValue( DN_NPCListCacheClass, v:GetClass() )] -- now lets grab the name from the key of the cached class
+					else
+						table.Empty(DN_NPCListCacheModel)
+						table.Empty(DN_NPCListCacheClass)
+						if GetConVar("DeathNote_Debug"):GetBool() then -- Debug Messages
+							print("[Death Note Debug] Cache error forceing reset on next GUI open.")
+						end
+						npc_name = deathnote_npc_classname(v)
+					end
+					npc_name = npc_type..npc_name -- let's add the npc type to the fancy name
+					DeathNotePlayerList:AddLine(npc_name,v:EntIndex()) -- Then add lines for NPC's/NextBots
+				end
 			end
 		end
 	end
 end
-	-- PrintTable( list.Get( "NPC" ) )
+
+function deathnote_npc_type_fix(npc)
+	if npc:IsNPC() then -- If they are a base NPC
+		return "[NPC] "	-- lets return the string for NPC
+	elseif npc:IsNextBot() then -- If they are a NextBot
+		return "[NextBot] " -- lets return the string for NextBot
+	elseif npc:IsPlayer() then -- If it's a Player? this should never trigger.
+		return "[Player?] " -- -- return Player class? but how did this happen?
+	end
+	return "[???] " -- If it's neither let's return question marks
+end
+
+function deathnote_npc_classname(npc) -- Use for Fast Class and fallback for fancy name one done
+	local npc_name = npc:GetClass()
+	if string.StartsWith(npc:GetClass(), "npc_") then -- If they have npc_
+		npc_name = string.TrimLeft(npc:GetClass(), "npc_") -- let's remove it
+		npc_name = string.SetChar(npc_name, 1, string.upper( string.sub( npc_name, 1, 1 ))) -- let's capitalize the first character.
+	end
+	return npc_name
+end
+
+DN_NPCListCacheModel = {} -- let's create the cache models
+DN_NPCListCacheModelName = {} -- let's create the cache name for the models
+DN_NPCListCacheClass = {} -- let's create the cache class
+DN_NPCListCacheClassName = {} -- let's create the cache name for the class
+
+function deathnote_npc_nicenamecache()
+	-- let's check if any of the tables are empty if one is, remake it.
+	if table.IsEmpty( DN_NPCListCacheModel ) or table.IsEmpty( DN_NPCListCacheModelName ) or table.IsEmpty( DN_NPCListCacheClass ) or table.IsEmpty( DN_NPCListCacheClassName ) then 
+		table.Empty(DN_NPCListCacheModel) -- empty the tables incase there aleady data in there
+		table.Empty(DN_NPCListCacheModelName) -- empty the tables incase there aleady data in there
+		table.Empty(DN_NPCListCacheClass) -- empty the tables incase there aleady data in there
+		table.Empty(DN_NPCListCacheClassName) -- empty the tables incase there aleady data in there
+		local DN_NPCList = list.Get( "NPC" ) -- let's gtab the npc list
+		for k, v in pairs( DN_NPCList ) do -- let's go though the list 
+			if v.Model != nil then -- if it has a model 
+				table.insert( DN_NPCListCacheModel, string.lower(v.Model) ) --let's the model to cached models and lower case at the same time incase someone uppercased the string model
+				table.insert( DN_NPCListCacheModelName, v.Name ) -- and the name to the cached models name, they end up having the same key so there "linked"
+			else
+				table.insert( DN_NPCListCacheClass, v.Class ) -- again but class
+				if v.Class != "npc_citizen" then -- if it's not a Citizen
+					table.insert( DN_NPCListCacheClassName, v.Name ) -- use the name of the class
+				else
+					table.insert( DN_NPCListCacheClassName, "Citizen" ) -- if it's a citizen lets call them that instead of Medic
+				end
+			end
+		end
+		if GetConVar("DeathNote_Debug"):GetBool() then -- Debug Messages
+			print("[Death Note Debug] NPC's tables created and cached.")
+		end
+	else
+		if GetConVar("DeathNote_Debug"):GetBool() then-- Debug Messages for already cached
+			print("[Death Note Debug] NPC's tables already cached.")
+		end
+	end
+end
+
 function deathnote_ttt_names(DeathNotePlayerList) -- TTT Version of only adding names no NPC's and hideing traitor roles (not coded the great for TTT2 use link from below)
 	if GetRoundState() == ROUND_ACTIVE then -- Only work if round is in the active state
 		for k,v in pairs(player.GetAll()) do -- Grab all the players
@@ -74,11 +148,11 @@ function deathnote_gui(DN_DeathTypes)
 	DNCloseButten:SetSize( 114, 60 )
 	DNCloseButten.Paint = function() end
 	DNCloseButten.DoClick = function()
+		DeathNote:Close()
 		net.Start( "deathnote_pen" ) -- Send a dummy message to the server ro remove the abilty to use the entity deathnote as it varrible can persist though death untill the next use.
 			net.WriteString("?")
 			net.WriteString("3nt.F1x") -- just some stange charters for the deathtype to check for the dummy message leave as is (as this should be numbers)
 		net.SendToServer()
-		DeathNote:Close()
 	end
 	
 	local DeathNotePlayerList = vgui.Create("DListView")
@@ -95,18 +169,27 @@ function deathnote_gui(DN_DeathTypes)
 	end
 	DeathNotePlayerList.OnRowSelected = function( panel, rowIndex, row )
 		if row:GetValue(2) != TargetPlayer then -- to stop mulptile printing of selected players
-			-- chat.AddText( Color( 25, 25, 25 ), "Death Note: ", CGrey, row:GetValue(1), CWhite," Player Selected" )
+			if not GetConVar("DeathNote_GUI_FastNPCsNames"):GetBool() then -- Fancy names tend to be long so let's print the nbame to the chat as well.
+				local Target = ents.GetByIndex(row:GetValue(2))
+				local TargetType = "???"
+				if Target:IsPlayer() then
+					TargetType = "Player"
+				elseif Target:IsNPC() or Target:IsNextBot() then
+					TargetType = "NPC"
+				end
+				chat.AddText( Color( 25, 25, 25 ), "Death Note: ", CGrey, row:GetValue(1), CWhite," "..TargetType.." Selected" )
+			end
 			TargetPlayer = row:GetValue(2)
 			TargetPlayerName = row:GetValue(1)
 		end
 	end
-	-- DeathNotePlayerList.OnClickLine = function(parent, line, isselected) -- OLD WAY
+	/*DeathNotePlayerList.OnClickLine = function(parent, line, isselected) -- OLD WAY
 		-- if line:GetValue(2) != TargetPlayer then -- to stop mulptile printing of selected players
 			-- chat.AddText( Color( 25, 25, 25 ), "Death Note: ", CGrey, line:GetValue(1), CWhite," Player Selected" )
 			-- TargetPlayer = line:GetValue(2)
 			-- TargetPlayerName = line:GetValue(1)
 		-- end
-	-- end
+	-- end*/
 	DeathNotePlayerList.Paint = function() end
 	
 	local DeathType = vgui.Create("DListView")
@@ -127,12 +210,12 @@ function deathnote_gui(DN_DeathTypes)
 			TargetDeathType = row:GetValue(1)
 		end
 	end
-	-- DeathType.OnClickLine = function(parent, line, isselected) -- OLD WAY
-		-- if line:GetValue(1) != TargetDeathType then-- to stop mulptile printing of selected death types
-			-- chat.AddText( Color( 25, 25, 25 ), "Death Note: ", CGrey, line:GetValue(1), CWhite," Death Selected" )
-			-- TargetDeathType = line:GetValue(1)
-		-- end
-	-- end
+	/*DeathType.OnClickLine = function(parent, line, isselected) -- OLD WAY
+		if line:GetValue(1) != TargetDeathType then-- to stop mulptile printing of selected death types
+			chat.AddText( Color( 25, 25, 25 ), "Death Note: ", CGrey, line:GetValue(1), CWhite," Death Selected" )
+			TargetDeathType = line:GetValue(1)
+		end
+	end*/
 	
 	local DNWrite = vgui.Create( "DButton" )
 	DNWrite:SetParent( DeathNote ) -- Set parent to our "DermaPanel"
@@ -163,7 +246,7 @@ function deathnote_gui(DN_DeathTypes)
 	DNCheck.DoClick = function()
 		for k,v in pairs(player.GetAll()) do --All this does is put some text in the chat if the 2 creators are on the server
 			if v:SteamID64() == "76561198025795415" then chat.AddText( CBlack, "Death Note: ", Color( 0, 100, 255 ), "Blue-Pentagram", CWhite, " is on this server." ) end
-			if v:SteamID64() == "76561198055281421" then chat.AddText( CBlack, "Death Note: ", CWhite, "TheRowan is on this server." ) end
+			if v:SteamID64() == "76561198055281421" then chat.AddText( CBlack, "Death Note: ", CWhite, v:Nick().." AKA 'TheRowan' is on this server." ) end
 		end -- This is a free to use code you may edit the code how ever you want but keep the steam ids and message the same please.
 	end
 
@@ -171,20 +254,15 @@ end
 
 net.Receive( "deathnote_gui", function( len, pl )
 	DN_DeathTypes = net.ReadTable()
-	if not gmod.GetGamemode().FolderName == "terrortown" then
-		deathnote_gui(DN_DeathTypes)
-		return
-	else -- This for TTT just remove's disabled death types from showing up in the list there check's in the death to still stop it though
-		DN_Neater_Menu = ""
+	if gmod.GetGamemode().FolderName == "terrortown" then
 		if not GetConVar("DeathNote_TTT_DT_Explode_Enable"):GetBool() then 
-			DN_Neater_Menu = "explode"
-			DeathNote_Remove_TTT_Disabled_Death_Types(DN_Neater_Menu)
+			DeathNote_Remove_TTT_Disabled_Death_Types("explode")
 		end
-		deathnote_gui(DN_DeathTypes)
 	end
+	deathnote_gui(DN_DeathTypes)
 end )
 
-function DeathNote_Remove_TTT_Disabled_Death_Types(DN_Neater_Menu) -- This was made due due to fact i have a disable for dissolve for TTT, that was before it was tested in TTT
+function DeathNote_Remove_TTT_Disabled_Death_Types(DN_Neater_Menu) -- This was made due to fact i have a disable for dissolve for TTT, that was before it was tested in TTT
 	if not table.HasValue(DN_DeathTypes, DN_Neater_Menu) then return end
 	table.remove( DN_DeathTypes, table.KeyFromValue( DN_DeathTypes, DN_Neater_Menu ) )	
 end
@@ -195,6 +273,7 @@ hook.Add( "PopulateToolMenu", "deathnote_q_utilities_settings", function()
 		panel:Clear()
 		panel:Help("---[Client]---")
 		panel:CheckBox( "Show NPC's in list", "DeathNote_GUI_ShowNPCs", 0, 1 )
+		panel:CheckBox( "Fast NPC's Names in list", "DeathNote_GUI_FastNPCsNames", 0, 1 )
 		panel:Help("---[Server]---")
 		panel:Help("Note: Dedicated Server's will need to RCON for changes to work correctly.")
 		panel:Help("[General]")

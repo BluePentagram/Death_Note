@@ -11,6 +11,7 @@ TTT_DN_Chance	= {2,4}
 -- Clinet commands
 -- if !ConVarExists( "DeathNote_GUI_ShowNPCs") then
 	CreateClientConVar( "DeathNote_GUI_ShowNPCs", 1, true, false )
+	CreateClientConVar( "DeathNote_GUI_FastNPCsNames", 0, true, false )
 -- end
 -- General
 if !ConVarExists( "DeathNote_ulx_installed") then
@@ -80,7 +81,7 @@ end
 -- Commands that work for certain death types could be in the death type itself but since only the server loads them
 -- the commands will not be built on the client side making it harder for admins to find the commands and change them
 
-local version = "0.3.0"
+local version = "0.3.1"
 hook.Add("Think", "DeathNote_CheckVersion", function()
 	http.Fetch("https://raw.githubusercontent.com/BluePentagram/Death_Note/master/version.txt", function( body, len, headers, code)
 		if GetConVar("DeathNote_Update_Messege"):GetBool() then
