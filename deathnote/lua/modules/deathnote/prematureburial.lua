@@ -1,6 +1,7 @@
 
 
 function dn_module_prematureburial(ply,target) 
+	local TerrorTownCheck = gmod.GetGamemode().FolderName == "terrortown" -- Let's make a terror town check
 	if target:IsPlayer() then -- Kicking the player out of Vehicle To Kill THem
 		if target:InVehicle() then
 			target:ExitVehicle()
@@ -9,16 +10,13 @@ function dn_module_prematureburial(ply,target)
 	local Pos = target:GetPos()
 	DeathNoteDeathInUse("prematureburial",true) -- let's add it from the use list
 	local DN_Burial_Count = 0
-		if target:Health() >= target:GetMaxHealth() then
-			target:SetHealth(target:GetMaxHealth())
-		end
 	if target:IsPlayer() then 
 		target:Freeze( true ) -- Move freeze up to see if they can be buried while frozen
 	end
 	timer.Create( "BuryTime", 1, 16, function()
 		DN_Burial_Count = DN_Burial_Count + 1
 		if not IsValid(target) then 
-			DeathNoteDeathInUse("prematureburial",false) 
+			DeathNoteDeathInUse("prematureburial",nil) 
 			timer.Remove("BuryTime") 
 			return 
 		end -- If victim no longer exiscts stop the timer and function
@@ -26,16 +24,15 @@ function dn_module_prematureburial(ply,target)
 			target:SetPos(target:GetPos() + Vector(0,0,-20))
 			if DN_Burial_Count == 4 then
 				target:SetPos(target:GetPos() + Vector(0,0,-1500)) -- LET REALLY MOVE THEM DOWN (no more proplems with multiple floors and what not	
-				PreBuryGrave(Pos,target) 
+				PreBuryGrave(Pos,target,TerrorTownCheck) 
 			end
 		elseif DN_Burial_Count == 16 then -- Outright Kill the victim and kill the npc after a while
 			local dmgInfo = DamageInfo()
-			dmgInfo:SetDamage( 1e8 )
+			dmgInfo:SetDamage( target:Health() )
 			dmgInfo:SetAttacker( ply or target )
-			-- dmgInfo:SetDamageType( DMG_GENERIC ) 
 			dmgInfo:SetDamageForce( Vector(0,0,0) ) 
 			target:TakeDamageInfo(dmgInfo)
-			dn_bury_end(ply,target)
+			dn_bury_end(ply,target,TerrorTownCheck)
 			if IsValid(target) then -- Sorry people "RemoveEntity" is not used in the death to prevent NPC from getting stuck underground and will always be removed
 				target:Remove()
 			end
@@ -44,15 +41,13 @@ function dn_module_prematureburial(ply,target)
 		if DN_Burial_Count >= 5 then -- Deal damage while underground
 			if target:IsPlayer()then
 				if target:Alive() then
-					if target:Health() <= 10 then
-						target:Kill()
-						dn_bury_end(ply,target)
-						return
-					else
-						target:SetHealth(target:Health() - 10)
-					end
+					local dmgInfo = DamageInfo()
+					dmgInfo:SetDamage( 10 )
+					dmgInfo:SetAttacker( ply or target )
+					dmgInfo:SetDamageForce( Vector(0,0,0) ) 
+					target:TakeDamageInfo(dmgInfo)
 				else
-					dn_bury_end(ply,target)
+					dn_bury_end(ply,target,TerrorTownCheck)
 				end		
 			end
 		end
@@ -60,29 +55,44 @@ function dn_module_prematureburial(ply,target)
 end
 hook.Add( "dn_module_prematureburial", "DN Premature Bury Death", dn_module_prematureburial )
 
-function dn_bury_end(ply,target)
+function dn_bury_end(ply,target,TerrorTownCheck)
 	if target:IsPlayer() then 
+		if TerrorTownCheck then -- let's remove TTT corpse so in not falling into a infinte abyss
+			for _, ent in ents.Iterator() do
+				if ( ent:GetClass() == "prop_ragdoll" ) then
+					if ent.sid64 == target:SteamID64() then
+						ent:Remove()
+					end
+				end
+			end
+			if GetConVar("DeathNote_Debug"):GetBool() then
+				print("[Death Note Debug] Premature Burial Removed TTT corpse for: "..target:Nick()) -- Prints loaded module's i only use to make sure module where loaded    
+			end		
+		end
 		target:Freeze( false ) 
-		local tttmessage = "Death Note: "..target:Nick().." has been buried alive!"
+		local tttmessage = "has been buried alive!"
 		dn_messages(ply,target,tttmessage)
 	end -- Unfreeze the person
-	DeathNoteDeathInUse("prematureburial",false) -- let's remove it from the use list
+	DeathNoteDeathInUse("prematureburial",nil) -- let's remove it from the use list
 	timer.Remove("BuryTime")
 end
 
-function PreBuryGrave(Pos,target)-- Will have to fix the text with the npcs
-	if gmod.GetGamemode().FolderName == "terrortown" then return end -- The Entity does noe work as it calls from base gmod entity that not loaded within terror town
-	Grave_Model = "models/props_c17/gravestone004a.mdl"
+function PreBuryGrave(Pos,target,TerrorTownCheck)-- Will have to fix the text with the npcs
+	Grave_Model = "models/props_c17/gravestone004a.mdl" -- see if i can make them just props with only world collusion and freeze them make code to block out 3rd ent for name?
 	Shovel_Model = "models/props_junk/shovel01a.mdl"
 	local Ang = target:GetAngles()
-	local Grave = ents.Create( "ent_death_mark" )
+	if TerrorTownCheck then -- If terror town
+		Grave = ents.Create( "prop_dynamic_override" ) -- we will use a normal prop, the grave cleanup will be handled by TTT round restart cleanup
+	else
+		Grave = ents.Create( "ent_death_mark" ) -- if sandbox use the ent that has writeing, sandbox ent will remove itself after 30 seconds
+	end
 	if ( !IsValid( Grave ) ) then return end 
 	Grave:SetPos( Pos + Ang:Up() * 17 )
 	Grave:SetAngles( Ang )
 	Grave:SetOwner(target)
 	Grave:SetModel(Grave_Model)
 	Grave:Spawn()
-	local Shovel = ents.Create( "ent_death_mark" )
+	local Shovel = ents.Create( "prop_dynamic_override" )
 	if ( !IsValid( Shovel ) ) then return end
 	Shovel:SetPos( Pos + Ang:Up() * 23 + Ang:Forward() * -8 )
 	Ang:RotateAroundAxis(Ang:Right(), -20)
@@ -92,4 +102,7 @@ function PreBuryGrave(Pos,target)-- Will have to fix the text with the npcs
 	Shovel:SetOwner(target)
 	Shovel:SetModel(Shovel_Model)
 	Shovel:Spawn()
+	if not TerrorTownCheck then
+		Grave.Shovel = Shovel -- link the shovel to the grave mostly for sandbox
+	end
 end

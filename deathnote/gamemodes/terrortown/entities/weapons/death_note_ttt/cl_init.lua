@@ -1,4 +1,4 @@
--- TTT Weapon cli_init
+
 
 include('shared.lua')
 

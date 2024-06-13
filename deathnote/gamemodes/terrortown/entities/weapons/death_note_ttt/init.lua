@@ -1,4 +1,4 @@
---DeathNote TTT Weapon init
+
 
 
 AddCSLuaFile( "cl_init.lua" )
@@ -9,7 +9,8 @@ SWEP.Weight = 5
 SWEP.AutoSwitchTo = true
 SWEP.AutoSwitchFrom = true
 -- SWEP.deathtype = 1
-SWEP.DN_DeathType = table.KeyFromValue( DN_DeathTypes, "heartattack" )
+-- SWEP.DN_DeathType = table.KeyFromValue( DN_DeathTypes, "heartattack" )
+SWEP.DN_DeathType = DN_DeathTypes["heartattack"]
 
 
 resource.AddFile("vgui/deathnote_vgui.vmt")
@@ -21,26 +22,20 @@ if SERVER then
 		return IsValid(ply)
 	end
 end
-function DNRESET()
-	for k,v in pairs(player.GetAll()) do
-		v.DeathNoteUse = false
-		v.DN_TTT_Bypass = false
-	end
-	table.Empty(DN_DeathsInUse)
-	if table.HasValue(DN_DeathTypes, "dissolve") then -- These can reapper if you cause a lua reload during a round 
-		table.remove( DN_DeathTypes, table.KeyFromValue( DN_DeathTypes, "dissolve" ) )	
+
+function DN_RESET_ON_NEW_ROUND() -- Let's unload modules here to prevent a weapon swap to a disabled swap
+	dn_reset_tables() -- Go to the reset function in sv_deathnote.lua
+	DN_TTT_Swap_Availabilty("Explode") -- so multiple death modules can be done with less lines of code
+	DN_TTT_Swap_Availabilty("Dissolve")
+
+	if DN_DeathTypes["headexplode"] then
+		DN_DeathTypes["headexplode"] = nil	
 		if GetConVar("DeathNote_Debug"):GetBool() then
-			print("[Death Note Debug] Module Unloaded: dissolve.") -- Prints loaded module's i only use to make sure module where loaded
-		end
-	end
-	if table.HasValue(DN_DeathTypes, "headexplode") then -- These can reapper if you cause a lua reload during a round 
-		table.remove( DN_DeathTypes, table.KeyFromValue( DN_DeathTypes, "headexplode" ) )	
-		if GetConVar("DeathNote_Debug"):GetBool() then
-			print("[Death Note Debug] Module Unloaded: headexplode.") -- Prints loaded module's i only use to make sure module where loaded
+			print("[Death Note Debug] Module Unloaded: Head Explode.") 
 		end
 	end
 end
-hook.Add( "TTTBeginRound", "deathnote_reset", DNRESET )
+hook.Add( "TTTBeginRound", "deathnote_reset", DN_RESET_ON_NEW_ROUND )
 
 function SWEP:Reload()
 	local ply = self.Owner
@@ -53,13 +48,13 @@ function SWEP:PrimaryAttack()
 	local eyetrace = ply:GetEyeTrace().Entity
 	
 	if self.Owner:KeyDown(IN_USE) then
-		self.DN_DeathType = self.DN_DeathType + 1
-		if self.DN_DeathType > #DN_DeathTypes then
-			self.DN_DeathType = 1
+		self.DN_DeathType = next( DN_DeathTypes,self.DN_DeathType )
+		if self.DN_DeathType == nil then -- if the table is at the end it will give a nil and we will need to redo to restart the table
+			self.DN_DeathType = next( DN_DeathTypes,self.DN_DeathType )
 		end
-		self.Owner:PrintMessage(HUD_PRINTTALK,"Death Note: "..DN_DeathTypes[self.DN_DeathType])
+		ply:PrintMessage(HUD_PRINTTALK,"Death Note: Selection "..self.DN_DeathType)
 	else	
-		if !ply.DeathNoteUse then
+		if !DN_DeathNoteUse[ply] then
 			if IsValid(eyetrace) then
 				if eyetrace:IsPlayer() then
 					local trKill = player.GetByID(eyetrace:EntIndex())
@@ -78,5 +73,25 @@ function SWEP:SecondaryAttack()
 		net.Start( "deathnote_gui" )
 			net.WriteTable(DN_DeathTypes)
 		net.Send( self.Owner ) 
+	end
+end
+
+function DN_TTT_Swap_Availabilty(deathtype)
+	if GetConVar("DeathNote_TTT_DT_"..deathtype.."_Enable"):GetBool() then
+		local ldeathtype = string.lower(deathtype)
+		if not DN_DeathTypes[ldeathtype] then
+			DN_DeathTypes[ldeathtype] = ldeathtype
+			if GetConVar("DeathNote_Debug"):GetBool() then
+				print("[Death Note Debug] Module Loaded: "..deathtype..".") -- Prints loaded module's i only use to make sure module where loaded
+			end
+		end
+	else
+		local ldeathtype = string.lower(deathtype)
+		if DN_DeathTypes[ldeathtype] then
+			DN_DeathTypes[ldeathtype] = nil
+			if GetConVar("DeathNote_Debug"):GetBool() then
+				print("[Death Note Debug] Module Unloaded: "..deathtype..".") -- Prints loaded module's i only use to make sure module where loaded
+			end
+		end
 	end
 end

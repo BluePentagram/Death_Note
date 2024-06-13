@@ -16,7 +16,7 @@ if SERVER then
 	function ENT:AcceptInput(ply, caller)
 		if caller:IsPlayer() && !caller.CantUse then
 			caller.CantUse = true
-			caller.CanUseDeathNoteEnt = true
+			DN_CanUseEntity[caller] = true
 			timer.Simple(3, function()  caller.CantUse = false end)
 	
 			if caller:IsValid() then

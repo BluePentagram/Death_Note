@@ -1,4 +1,4 @@
---Weapon cl_init
+
 
 include('shared.lua')
 

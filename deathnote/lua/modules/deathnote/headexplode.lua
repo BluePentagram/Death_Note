@@ -16,22 +16,26 @@ function dn_module_headexplode(ply,target)
 		net.WriteEntity(target)
 	net.Broadcast()
 	timer.Simple( 0.51, function() 
-		DeathNoteDeathInUse("headexplode",false)
+		DeathNoteDeathInUse("headexplode",nil)
 		if target:IsPlayer() then
 			if target:InVehicle() then
 				target:ExitVehicle()
-			end 
-			local tttmessage = "Death Note: "..target:Nick().." Does Note Work in TTT "
-			if target:Health() >= target:GetMaxHealth() then
-				target:SetHealth(target:GetMaxHealth())
 			end
 		end 
 		local dmgInfo = DamageInfo()
-		dmgInfo:SetDamage( 1e8 )
+		dmgInfo:SetDamage( target:Health() )
 		dmgInfo:SetAttacker( ply or target )
 		target:TakeDamageInfo(dmgInfo)
+		local tttmessage = "has had there head exploded via the Death Note." 
 		dn_messages(ply,target,tttmessage)
 		DeathNote_RemoveEntity(ply,target)
 	end )
 end
 hook.Add( "dn_module_headexplode", "DN Head Explode Death", dn_module_headexplode )
+
+/*
+Most likely not going to get this death for working for TTT on how i would like to function.
+Would like it to remove who's name is on the body but to much could go wroung. 
+Like custom roles for TTT2 Custom scoreboards, The diffence's of how body could be reported
+Useing the body grabber in dissolve deathtype can grab the body and edit the head scale bone.
+*/
