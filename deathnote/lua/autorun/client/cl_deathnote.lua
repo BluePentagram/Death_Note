@@ -92,12 +92,14 @@ function deathnote_npc_nicenamecache()
 	end
 end
 
-function deathnote_ttt_names(DeathNotePlayerList) -- TTT Version of only adding names no NPC's and hideing traitor roles (not coded the great for TTT2 use link from below)
+function deathnote_ttt_names(DeathNotePlayerList) -- Orginal TTT Version of adding names no NPC's and teammate roles
 	if GetRoundState() == ROUND_ACTIVE then -- Only work if round is in the active state
-		local PlayerRole = deathnote_ttt_simple_team()
+		local PlayerRole = deathnote_ttt_simple_team() -- pair's innocents and detectives together and traitors to traitors
 		for k,v in pairs(player.GetAll()) do -- Grab all the players
 			if v != LocalPlayer() then
-				Name = "["..string.Left(v:GetRoleString(),1).."] "..v:Nick() -- Grab the first letter of the person's role
+				FixNoRole = v:GetRoleString()  -- Get all there roles
+				if string.lower(v:GetRoleString()) == "no role" then FixNoRole = "Innocent" end -- A Simple TTT2 innocent fix if ttt2 table failedd to load
+				Name = "["..string.Left(FixNoRole,1).."] "..v:Nick() -- Grab the first letter of the person's role
 				local hideteam = v:GetRole() != PlayerRole -- Check if they are not a traitor for the if statement below
 				local alive = v:Alive() and v:Team() == TEAM_TERROR -- only if there alive and on the team of terror (terror team is alive and playing), orginally was coded as not in spectator team
 				if hideteam and alive then -- if they are not a tratior and alive or not in team soec
@@ -194,20 +196,10 @@ function deathnote_gui(DN_DeathTypes)
 		deathnote_sandbox_names(DeathNotePlayerList) -- Sandbox Plaayer/NPC making
 	end
 	DeathNotePlayerList.OnRowSelected = function( panel, rowIndex, row )
-		if row:GetValue(2) != TargetPlayer then -- to stop mulptile printing of selected players
-			if not GetConVar("DeathNote_GUI_FastNPCsNames"):GetBool() then -- Fancy names tend to be long so let's print the nbame to the chat as well.
-				local Target = ents.GetByIndex(row:GetValue(2))
-				local TargetType = "???"
-				if Target:IsPlayer() then
-					TargetType = "Player"
-				elseif Target:IsNPC() or Target:IsNextBot() then
-					TargetType = "NPC"
-				end
-				chat.AddText( Color( 25, 25, 25 ), "Death Note: ", CGrey, row:GetValue(1), CWhite," "..TargetType.." Selected" )
-			end
-			TargetPlayer = row:GetValue(2)
-			TargetPlayerName = row:GetValue(1)
-		end
+		local Target = ents.GetByIndex(row:GetValue(2))
+		chat.AddText( Color( 25, 25, 25 ), "Death Note: ", CGrey, row:GetValue(1), CWhite," Selected" )
+		TargetPlayer = row:GetValue(2)
+		TargetPlayerName = row:GetValue(1)
 	end
 
 	DeathNotePlayerList.Paint = function() end
@@ -226,10 +218,8 @@ function deathnote_gui(DN_DeathTypes)
 	DeathType:SortByColumn( 1 )
 	DeathType.Paint = function() end
 	DeathType.OnRowSelected = function( panel, rowIndex, row )
-		if row:GetValue(1) != TargetDeathType then-- to stop mulptile printing of selected death types
-			-- chat.AddText( Color( 25, 25, 25 ), "Death Note: ", CGrey, row:GetValue(1), CWhite," Death Selected" )
-			TargetDeathType = row:GetValue(1)
-		end
+		-- chat.AddText( Color( 25, 25, 25 ), "Death Note: ", CGrey, row:GetValue(1), CWhite," Death Selected" )
+		TargetDeathType = row:GetValue(1)
 	end
 	
 	local DNWrite = vgui.Create( "DButton" )
@@ -252,7 +242,7 @@ function deathnote_gui(DN_DeathTypes)
 		end
 	end
 	
-	local DNCheck = vgui.Create( "DButton" ) --Easter Egg in GUI
+	local DNCheck = vgui.Create( "DButton" ) --Easter Egg in GUI, and one debug for checking player list
 	DNCheck:SetParent( DeathNote ) -- Set parent to our "DermaPanel"
 	DNCheck:SetText( "" )
 	DNCheck:SetPos( 260, 22 )
@@ -262,7 +252,20 @@ function deathnote_gui(DN_DeathTypes)
 		for k,v in pairs(player.GetAll()) do --All this does is put some text in the chat if the 2 creators are on the server
 			if v:SteamID64() == "76561198025795415" then chat.AddText( CBlack, "Death Note: ", Color( 0, 100, 255 ), "Blue-Pentagram", CWhite, " is on this server." ) end
 			if v:SteamID64() == "76561198055281421" then chat.AddText( CBlack, "Death Note: ", CWhite, v:Nick().." AKA 'TheRowan' is on this server." ) end
-		end -- This is a free to use code you may edit the code how ever you want but keep the steam ids and message the same please.
+		end
+		if GetConVar("DeathNote_Debug"):GetBool() then -- Debug checking to see what list is being loaded
+			if gmod.GetGamemode().FolderName == "terrortown" then  
+				if gmod.GetGamemode().Name == "TTT2" then
+					chat.AddText( CBlack, "Death Note: ", CWhite, "Useing Xopez's TTT2 Player list" )
+				else
+					chat.AddText( CBlack, "Death Note: ", CWhite, "Useing Orginal TTT Player list" )
+
+				end
+			else
+				chat.AddText( CBlack, "Death Note: ", CWhite, "Death Note: Useing Sandbox Player list" )
+
+			end
+		end
 	end
 
 end
